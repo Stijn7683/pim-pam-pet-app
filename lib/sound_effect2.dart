@@ -221,6 +221,7 @@ Uint8List _generateTone(_SoundProfile profile, bool isFirstTone) {
   final frequency = _gaussianRandom(mean: profile.baseFreq, stdDev: profile.freqStdDev);
 
   final double duration = -math.log(isFirstTone ? _endVolume1 : _endVolume2) / profile.fadeRate;
+  print('duration: $duration seconds, is first tone: $isFirstTone');
   final int samples = (duration * sampleRate).round();
 
   // Harmonic mix based on brightness

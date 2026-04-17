@@ -29,11 +29,11 @@ class _PlayscreenState extends State<Playscreen2> {
   String subject = '';
   String randomLetter = '';
   List<Player> players = [];
-  // bool soundEnabled = true;
-  // bool sortScores = true;
   bool noArticle = false;
   int skipsInaRow = 0;
   bool pointGivenThisRound = true;
+  DateTime? _lastPressedTime;
+  final _cooldownDuration = Duration(milliseconds: 550);
 
   void _randomise() {
     if (!pointGivenThisRound) {
@@ -200,9 +200,10 @@ class _PlayscreenState extends State<Playscreen2> {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTapDown: (test) {
-              //Stopwatch stopwatch = new Stopwatch()..start();
-              // calculate rankchange when this item would get a point, so before the state changes
-              //TODO
+              // if (_lastPressedTime != null && DateTime.now().difference(_lastPressedTime!).inMilliseconds < _cooldownDuration.inMilliseconds) {
+              //   print('Action on cooldown');
+              //   return;
+              // }
 
               late final int oldIndex;
               if (value.sortScores) {
@@ -217,10 +218,8 @@ class _PlayscreenState extends State<Playscreen2> {
               newPlayerList[playerIndex] = Player(player.name, player.score + 1);
               //sort newPlayerList to calculate rank change
               newPlayerList.sort((a, b) => b.score.compareTo(a.score));
-              
-              //print('doSomething() executed in ${stopwatch.elapsed}');
-              //print("old index: $oldIndex, new index: ${newPlayerList.indexWhere((p) => p.name == player.name)}");
 
+              //print("old index: $oldIndex, new index: ${newPlayerList.indexWhere((p) => p.name == player.name)}");
               //print(value.sortScores ? oldIndex - newPlayerList.indexWhere((p) => p.name == player.name) : 0);
               if (value.soundEnabled) {
                 playFirstTone(context: SoundContext(
@@ -234,6 +233,9 @@ class _PlayscreenState extends State<Playscreen2> {
               }
             },
             onTap: () {
+              if (_lastPressedTime != null && DateTime.now().difference(_lastPressedTime!).inMilliseconds < _cooldownDuration.inMilliseconds) {
+                return;
+              }
               late final int oldIndex;
               _scaleResetTimer?.cancel();
               pointGivenThisRound = true;
@@ -276,6 +278,8 @@ class _PlayscreenState extends State<Playscreen2> {
                   skipsBeforePoint: skipsInaRow,
                 ));
               }
+
+              _lastPressedTime = DateTime.now();
               
               HapticFeedback.successNotification();
             },
