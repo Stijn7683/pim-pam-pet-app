@@ -1,0 +1,14 @@
+To use the Carter One font in the Android homescreen widget:
+
+1. Download the Carter One TTF (e.g. carter_one.ttf).
+2. Create the folder: android/app/src/main/res/font/
+3. Copy `carter_one.ttf` into that folder.
+4. Re-add the fontFamily attributes in the layout (optional):
+   - `android:fontFamily="@font/carter_one"` on `subject_text` and `letter_text`.
+5. Run:
+
+   flutter pub get
+   flutter clean
+   flutter run
+
+If you want me to add the font file for you, provide the TTF file or allow me to fetch it and I'll place it into `android/app/src/main/res/font/carter_one.ttf` and re-enable the layout attributes.

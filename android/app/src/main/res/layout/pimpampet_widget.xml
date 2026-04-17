@@ -1,0 +1,67 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.Android.AppWidget.Container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="5dp"
+    android:theme="@style/Theme.Android.AppWidgetContainer">
+
+    <TextView
+        android:id="@+id/article_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="9sp"
+        android:textColor="?android:textColorPrimary"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:lineSpacingExtra="0dp"
+        android:lineSpacingMultiplier="1.1" 
+        />
+
+    <TextView
+        android:id="@+id/subject_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/carter_one_regular"
+        android:textColor="?android:textColorPrimary"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:layout_marginTop="1dp"
+        android:layout_marginBottom="1dp"
+        android:lineSpacingExtra="0dp"
+        android:lineSpacingMultiplier="1.05" 
+    />
+
+    <TextView
+        android:id="@+id/letter_instruction_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="9sp"
+        android:textColor="?android:textColorPrimary"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:lineSpacingExtra="0dp"
+        android:lineSpacingMultiplier="1.1" />
+
+    <TextView
+        android:id="@+id/letter_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:fontFamily="@font/carter_one"
+        android:textColor="?android:textColorPrimary"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:layout_marginTop="1dp"
+        android:lineSpacingExtra="0dp"
+        android:lineSpacingMultiplier="1.05" />
+
+</LinearLayout>
