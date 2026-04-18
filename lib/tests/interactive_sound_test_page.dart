@@ -1,7 +1,7 @@
 // test/sound_lab_page.dart
 import 'package:flutter/material.dart';
-import 'package:pimpampet/sound_effect2.dart';
-//import 'package:pim_pam_pet/sound_effect.dart'; // adjust import
+import 'package:pimpampet/sound_effect3.dart';
+//import 'package:pim_pam_pet/sound_effect.dart';
 
 class SoundLabPage extends StatefulWidget {
   const SoundLabPage({super.key});
@@ -20,6 +20,12 @@ class _SoundLabPageState extends State<SoundLabPage> {
   final _letterController = TextEditingController();
 
   DateTime _selectedDateTime = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    setupAudioPlayers();
+  }
 
   Future<void> _pickDateTime() async {
     final picked = await showDatePicker(
@@ -55,8 +61,7 @@ class _SoundLabPageState extends State<SoundLabPage> {
       subject: _subjectController.text.isEmpty ? null : _subjectController.text,
       letter: _letterController.text.isEmpty ? null : _letterController.text,
       skipsBeforePoint: int.tryParse(_skipsController.text) ?? 0,
-      timeOfDay: _selectedDateTime,
-      date: _selectedDateTime,
+      time: _selectedDateTime,
     );
   }
 

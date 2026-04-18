@@ -8,8 +8,8 @@
 // - Works on Android and Web
 
 import 'dart:math' as math;
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
 // ====================== CONTEXT CLASS ======================
 /// Pass whatever game state you want the sound to react to.
@@ -71,41 +71,18 @@ const int _minDelayBetweenTonesMs = 200;
 
 const Set<String> _hardLetters = {'X', 'Y', 'Z', 'Q', 'F', 'C', 'I', 'J', 'U', 'N'};
 const Set<String> _hardSubjects = {'bloem', 'vis', 'schilder', 'beeldhouwer', 'schrijver', 'dichter', 'berg', 'bergketen', 'kanaal', 'rivier', 'muziekinstrument', 'stad', 'boom', 'vogel'};
-AudioPlayer _firstAudioPlayer = AudioPlayer();
-bool _isFirstPlayerAvailable = true;
-AudioPlayer _secondAudioPlayer = AudioPlayer();
-bool _isSecondPlayerAvailable = true;
-bool _secondPlayerHasSound = false;
+final SoLoud _soLoud = SoLoud.instance;
+
+Future<void> setupAudioPlayers() async {
+  await _soLoud.init();
+}
+
+void disposeAudioPlayers() {
+  _soLoud.deinit();
+}
 
 double _easeInOutQuad(double x) {
   return x < 0.5 ? 2 * x * x : 1 - math.pow(-2 * x + 2, 2) / 2;
-}
-
-Future<void> setupAudioPlayers() async {
-  await _firstAudioPlayer.setAudioContext(
-    AudioContext(
-      android: AudioContextAndroid(
-        contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.assistanceSonification,
-        audioFocus: AndroidAudioFocus.none,
-      ),
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.ambient,
-      ),
-    ),
-  );
-  await _secondAudioPlayer.setAudioContext(
-    AudioContext(
-      android: AudioContextAndroid(
-        contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.assistanceSonification,
-        audioFocus: AndroidAudioFocus.none,
-      ),
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.ambient,
-      ),
-    ),
-  );
 }
 
 // ====================== NORMAL RANDOM HELPER ======================
@@ -177,6 +154,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
       if (hour >= 18 || hour < 8) {
         final double transitionValue = hour == 18 ? _easeInOutQuad(now.minute / 60) : hour == 0 ? _easeInOutQuad(now.minute / 60) : hour == 7 ? _easeInOutQuad(1 - now.minute / 60) : 1;
         freq -= isFirstTone ? 0 : 10 * transitionValue;
+        stdDev -= isFirstTone ? 0 : 6 * transitionValue;
         fade *= 0.9 + 0.1 * (1 - transitionValue);
         volume *= 0.9 + 0.1 * (1 - transitionValue);
       }
@@ -185,6 +163,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
       if (hour >= 18 && !(now.month == 12 && now.day == 31) || hour < 8) {
         final double transitionValue = hour == 18 ? _easeInOutQuad(now.minute / 60) : hour == 7 ? _easeInOutQuad(1 - now.minute / 60) : 1;
         freq -= isFirstTone ? 0 : 10 * transitionValue;
+        stdDev -= isFirstTone ? 0 : 6 * transitionValue;
         fade *= 0.9 + 0.1 * (1 - transitionValue);
         volume *= 0.9 + 0.1 * (1 - transitionValue);
         //print(transitionValue);
@@ -198,7 +177,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
 
   return _SoundProfile(
     baseFreq: freq,
-    freqStdDev: stdDev,
+    freqStdDev: math.max(0, stdDev),
     freqSweep: sweep,
     fadeRate: fade,
     harmonicBrightness: brightness.clamp(0, 1), 
@@ -209,8 +188,6 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
 // ====================== TONE GENERATION ======================
 Uint8List _generateTone(_SoundProfile profile, bool isFirstTone) {
   const int sampleRate = 44100;
-  const int channels = 1;
-  const int bitsPerSample = 16;
   final List<int> pcm = [];
 
   // Apply normal deviation
@@ -280,158 +257,67 @@ Uint8List _generateTone(_SoundProfile profile, bool isFirstTone) {
     pcm.add(intSample);
   }
 
-  return _createWav(pcm, sampleRate, channels, bitsPerSample);
-}
-
-// ====================== WAV CREATION ======================
-Uint8List _createWav(
-    List<int> pcmData,
-    int sampleRate,
-    int numChannels,
-    int bitsPerSample,
-    ) {
-  final int byteRate = sampleRate * numChannels * bitsPerSample ~/ 8;
-  final int blockAlign = numChannels * bitsPerSample ~/ 8;
-  final int dataSize = pcmData.length * (bitsPerSample ~/ 8);
-  final int riffSize = 36 + dataSize;
-
-  final buffer = ByteData(44 + dataSize);
-
-  _writeString(buffer, 0, 'RIFF');
-  buffer.setUint32(4, riffSize, Endian.little);
-  _writeString(buffer, 8, 'WAVE');
-
-  _writeString(buffer, 12, 'fmt ');
-  buffer.setUint32(16, 16, Endian.little);
-  buffer.setUint16(20, 1, Endian.little);
-  buffer.setUint16(22, numChannels, Endian.little);
-  buffer.setUint32(24, sampleRate, Endian.little);
-  buffer.setUint32(28, byteRate, Endian.little);
-  buffer.setUint16(32, blockAlign, Endian.little);
-  buffer.setUint16(34, bitsPerSample, Endian.little);
-
-  _writeString(buffer, 36, 'data');
-  buffer.setUint32(40, dataSize, Endian.little);
-
-  int offset = 44;
-  for (final sample in pcmData) {
-    buffer.setInt16(offset, sample, Endian.little);
-    offset += 2;
+  final pcmBytes = Uint8List(pcm.length * 2);
+  final bd = ByteData.view(pcmBytes.buffer);
+  for (int i = 0; i < pcm.length; i++) {
+    bd.setInt16(i * 2, pcm[i], Endian.little);
   }
-  return buffer.buffer.asUint8List();
-}
-
-void _writeString(ByteData buffer, int offset, String value) {
-  for (int i = 0; i < value.length; i++) {
-    buffer.setUint8(offset + i, value.codeUnitAt(i));
-  }
+  return pcmBytes;
 }
 
 // ====================== PLAYBACK ======================
 DateTime? _firstToneStartTime;
+Uint8List? _cachedSecondTone;
 
-AudioPlayer createNewAudioPlayer() {
-  print('Creating new audio player');
-  final player = AudioPlayer();
-  player.setAudioContext(
-    AudioContext(
-      android: AudioContextAndroid(
-        contentType: AndroidContentType.sonification,
-        usageType: AndroidUsageType.assistanceSonification,
-        audioFocus: AndroidAudioFocus.none,
-      ),
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.ambient,
-      ),
-    ),
+Future<void> _playTone(Uint8List pcmBytes, int sampleRate) async {
+  if (pcmBytes.isEmpty) return;
+  // Create a fresh buffer stream for this one-shot tone
+  final AudioSource stream = SoLoud.instance.setBufferStream(
+    bufferingType: BufferingType.released,   // frees memory immediately after playback
+    sampleRate: sampleRate,
+    channels: Channels.mono,
+    format: BufferType.s16le,
+    // maxBufferSizeBytes omitted → uses safe 100 MB default (perfect for short tones)
   );
-  return player;
-}
 
-Future<void> _playTone(Uint8List? wavBytes, bool isFirstTone) async {
-  final AudioPlayer player;
-  bool isNewPlayer = false;
-  if (isFirstTone) {
-    if (_isFirstPlayerAvailable) {
-      player = _firstAudioPlayer;
-      _isFirstPlayerAvailable = false;
-    } else {
-      player = createNewAudioPlayer();
-      isNewPlayer = true;
-    }
-  } else {
-    if (_isSecondPlayerAvailable) {
-      player = _secondAudioPlayer;
-      _isSecondPlayerAvailable = false;
-    } else {
-      player = createNewAudioPlayer();
-      isNewPlayer = true;
-    }
-  }
-  // print(_isFirstPlayerAvailable);
-  // print(_isSecondPlayerAvailable);
+  // Feed the entire PCM at once (instant for our short tones)
+  SoLoud.instance.addAudioDataStream(stream, pcmBytes);
 
-  if (wavBytes != null) {
-    await player.setSource(BytesSource(wavBytes));
-  }
-  // await Future.delayed(const Duration(milliseconds: 8));
-  await player.resume();
-  //player.play(BytesSource(wavBytes));
-  
-  // ✅ 1. Normal completion
-  player.onPlayerComplete.first.then((_) {
-    if (isFirstTone) {
-      _isFirstPlayerAvailable = true;
-    } else {
-      _isSecondPlayerAvailable = true;
-    }
-    //print('done');
-    if (isNewPlayer) {
-      player.dispose();
-    }
-  }).catchError((_) {
-    // ✅ 2. Error during playback
-    if (isFirstTone) {
-      _isFirstPlayerAvailable = true;
-    } else {
-      _isSecondPlayerAvailable = true;
-    }
-    print('error');
-    if (isNewPlayer) {
-      player.dispose();
-    }
-  });
+  // CRITICAL: tell SoLoud this is a complete one-shot sound
+  SoLoud.instance.setDataIsEnded(stream);
+
+  // Play it! (no loadMem, no WAV parsing → near-zero latency)
+  SoLoud.instance.play(stream);
+
 }
 
 // ====================== PUBLIC API ======================
 /// Call on tap down. Pass context for adaptive sound.
 Future<void> playFirstTone({SoundContext? context}) async {
-  print('playfirsttone');
   final profile = _buildProfile(context, true);
+  final pcmBytes = await Future(() => _generateTone(profile, true));
 
-  final wavBytes = await Future(() => _generateTone(profile, true));
-  _playTone(wavBytes, true);
+  _playTone(pcmBytes, 44100);
+
   _firstToneStartTime = DateTime.now();
-  if (_isSecondPlayerAvailable) {
-    // Pre-generate second tone for faster response on tap up
-    Future(() {
-      final secondProfile = _buildProfile(context, false);
-      final secondWavBytes = _generateTone(secondProfile, false);
-      _secondPlayerHasSound = true;
-      _secondAudioPlayer.setSource(BytesSource(secondWavBytes));
-    });
-  }
+
+  // Pre-generate second tone (raw PCM, super fast)
+  Future(() {
+    final secondProfile = _buildProfile(context, false);
+    _cachedSecondTone = _generateTone(secondProfile, false);
+  });
 }
 
-/// Call on tap up (release).
 Future<void> playSecondTone({SoundContext? context}) async {
-  late final Uint8List wavBytes;
-  if (!_secondPlayerHasSound) {
-    print('playsecondtone, generating sound');
-    final profile = _buildProfile(context, false);
-    wavBytes = await Future(() => _generateTone(profile, false));
+  Uint8List pcmBytes;
+
+  if (_cachedSecondTone != null) {
+    print('playsecondtone → using pre-generated PCM');
+    pcmBytes = _cachedSecondTone!;
   } else {
-    print('playsecondtone, using pre-generated sound');
+    print('playsecondtone → generating on the fly');
+    final profile = _buildProfile(context, false);
+    pcmBytes = await Future(() => _generateTone(profile, false));
   }
 
   if (_firstToneStartTime != null) {
@@ -442,10 +328,7 @@ Future<void> playSecondTone({SoundContext? context}) async {
       await Future.delayed(Duration(milliseconds: delayNeeded));
     }
   }
-  if (_secondPlayerHasSound) {
-    _playTone(null, false);
-    _secondPlayerHasSound = false;
-    return;
-  }
-  _playTone(wavBytes, false);
+
+  _playTone(pcmBytes, 44100);
+  _cachedSecondTone = null; // optional: clear after use
 }

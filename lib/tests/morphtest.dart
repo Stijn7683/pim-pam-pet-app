@@ -149,7 +149,6 @@ class _InterpolatedNumberState extends State<_InterpolatedNumber>
   late AnimationController _controller;
   late Animation<double> _animation;
   late double _displayValue;
-  late int _previousScore;
 
   @override
   void initState() {
@@ -159,7 +158,6 @@ class _InterpolatedNumberState extends State<_InterpolatedNumber>
       duration: const Duration(milliseconds: 600),
     );
     _displayValue = widget.score.toDouble();
-    _previousScore = widget.score;
     
     _controller.addListener(() {
       setState(() {
@@ -172,7 +170,6 @@ class _InterpolatedNumberState extends State<_InterpolatedNumber>
   void didUpdateWidget(covariant _InterpolatedNumber oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.score != widget.score) {
-      _previousScore = oldWidget.score;
       _displayValue = oldWidget.score.toDouble();
       
       // Stop any ongoing animation

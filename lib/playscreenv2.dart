@@ -5,7 +5,7 @@ import 'package:pimpampet/pimpampetwidget.dart';
 import 'package:pimpampet/randomise.dart';
 import 'package:pimpampet/settings_provider.dart';
 import 'package:provider/provider.dart';
-import 'sound_effect2.dart';
+import 'sound_effect3.dart';
 
 class Playscreen2 extends StatefulWidget {
   const Playscreen2({super.key, required this.names});
@@ -20,6 +20,7 @@ class Player {
   final String name;
   int score;
   double scale;
+  double streakValue = 0;
 
   Player(this.name, this.score, {this.scale = 1});
 }
@@ -31,16 +32,22 @@ class _PlayscreenState extends State<Playscreen2> {
   List<Player> players = [];
   bool noArticle = false;
   int skipsInaRow = 0;
-  bool pointGivenThisRound = true;
   DateTime? _lastPressedTime;
   final _cooldownDuration = Duration(milliseconds: 550);
+  final List<String> _scoreGivenToThisRound = [];
 
-  void _randomise() {
-    if (!pointGivenThisRound) {
+  void _newRound() {
+    if (_scoreGivenToThisRound.isEmpty) {
       skipsInaRow++;
     } else {
+      // reset all the streak values to 0 for players that didn't get a point this round
+      for (final player in players) {
+        if (!_scoreGivenToThisRound.contains(player.name)) {
+          player.streakValue = 0;
+        }
+      }
       skipsInaRow = 0;
-      pointGivenThisRound = false;
+      _scoreGivenToThisRound.clear();
     }
 
     final (letter, subjectValue, noOne) = randomise();
@@ -53,11 +60,18 @@ class _PlayscreenState extends State<Playscreen2> {
 
   @override
   void initState() {
-    _randomise();
+    _newRound();
     players = List<Player>.generate(widget.names.length, (int index) => Player(widget.names[index], 0));
+    setupAudioPlayers();
     super.initState();
   }
 
+  @override
+  void dispose() {
+    disposeAudioPlayers();
+    _scaleResetTimer?.cancel();
+    super.dispose();
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -182,7 +196,7 @@ class _PlayscreenState extends State<Playscreen2> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: _randomise,
+          onPressed: _newRound,
           tooltip: 'nieuwe ronde',
           child: const Icon(Icons.refresh),
         ),
@@ -223,9 +237,10 @@ class _PlayscreenState extends State<Playscreen2> {
               //print(value.sortScores ? oldIndex - newPlayerList.indexWhere((p) => p.name == player.name) : 0);
               if (value.soundEnabled) {
                 playFirstTone(context: SoundContext(
-                  score: player.score,
-                  rankChange: value.sortScores ? oldIndex - newPlayerList.indexWhere((p) => p.name == player.name) : 0,
                   playerName: player.name,
+                  score: player.score + 1, // sound will play as if it will get the point
+                  rankChange: value.sortScores ? oldIndex - newPlayerList.indexWhere((p) => p.name == player.name) : 0,
+                  streakValue: _scoreGivenToThisRound.contains(player.name) ? player.streakValue :  player.streakValue + 1,
                   subject: subject,
                   letter: randomLetter,
                   skipsBeforePoint: skipsInaRow,
@@ -238,7 +253,6 @@ class _PlayscreenState extends State<Playscreen2> {
               }
               late final int oldIndex;
               _scaleResetTimer?.cancel();
-              pointGivenThisRound = true;
               if (!value.sortScores) {
                 setState(() {player.score++;});
               } else {
@@ -267,19 +281,25 @@ class _PlayscreenState extends State<Playscreen2> {
                   });
                 });
               }
+
+              _lastPressedTime = DateTime.now();
+              if (!_scoreGivenToThisRound.contains(player.name)) {
+                player.streakValue++;
+                _scoreGivenToThisRound.add(player.name);
+              }
           
               if (value.soundEnabled) {
                 playSecondTone(context: SoundContext(
+                  playerName: player.name,
                   score: player.score,
                   rankChange: value.sortScores ? oldIndex - players.indexOf(player) : 0,
-                  playerName: player.name,
+                  streakValue: player.streakValue,
                   subject: subject,
                   letter: randomLetter,
                   skipsBeforePoint: skipsInaRow,
                 ));
               }
 
-              _lastPressedTime = DateTime.now();
               
               HapticFeedback.successNotification();
             },
