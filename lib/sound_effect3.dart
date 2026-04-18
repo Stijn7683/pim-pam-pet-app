@@ -66,7 +66,7 @@ const double _baseSweep2 = 1.2;     // slight upward sweep for second tone
 const double _baseStdDev1 = 30.0;   // normal std dev in Hz
 const double _baseStdDev2 = 15.0;
 const double _endVolume1 = 0.09;     // 5% 
-const double _endVolume2 = 0.03;     // 3%
+const double _endVolume2 = 0.02;     // 2%
 const int _minDelayBetweenTonesMs = 200;
 
 const Set<String> _hardLetters = {'X', 'Y', 'Z', 'Q', 'F', 'C', 'I', 'J', 'U', 'N'};
@@ -106,6 +106,13 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
   double volume = .55;
 
   if (ctx != null) {
+    // --- streakValue change influence ---
+    print('streakValue: ${ctx.streakValue}');
+    double streakImpact = math.pow(math.min(ctx.streakValue -1, 7), 1.6).toDouble(); 
+    fade += streakImpact * .1;
+    sweep += (isFirstTone ? -0.4 : .5) * streakImpact;
+    freq += math.min(streakImpact * 5, 50);
+
     // --- Rank change influence ---
     // Climbing feels more exciting → wider deviation, snappier fade, faster sweep
     double climb = math.pow(math.min(ctx.rankChange, 6), 1.2).toDouble(); 
@@ -118,7 +125,8 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
     freq -= isFirstTone ? (ctx.skipsBeforePoint / 2).clamp(0, 40) : (ctx.skipsBeforePoint / 3).clamp(0, 40);
     stdDev += isFirstTone ? (ctx.skipsBeforePoint / 5).clamp(0, 20) : 0;
     fade -= (ctx.skipsBeforePoint / 6).clamp(0, 3); // more skips = smoother fade
-    volume += (ctx.skipsBeforePoint / 50).clamp(0, .07); // more skips = louder to feel more rewarding
+    volume += (ctx.skipsBeforePoint / 50).clamp(0, .06); // more skips = louder to feel more rewarding
+    sweep += (isFirstTone ? -0.2 : .3) * climb;
 
     // --- hard Letter and hard Subject influence ---
     double difficultyInfluence = 0;
@@ -131,7 +139,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
     fade += .5 * difficultyInfluence; // harder letters get a snappier sound
     stdDev -= isFirstTone ? 5 * difficultyInfluence : 0; // and less pitch variation on first tone 
     freq += (isFirstTone ? -0 : 15) * difficultyInfluence; // and slightly higher pitch
-    //sweep += (isFirstTone ? -0.4 : 0.5) * difficultyInfluence;
+    sweep += (isFirstTone ? -0.4 : 0.5) * difficultyInfluence;
     volume += 0.03 * difficultyInfluence; // and a bit louder
     brightness -= 0.2 * difficultyInfluence;
 
@@ -177,7 +185,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
 
   return _SoundProfile(
     baseFreq: freq,
-    freqStdDev: math.max(0, stdDev),
+    freqStdDev: 0, //math.max(0, stdDev),
     freqSweep: sweep,
     fadeRate: fade,
     harmonicBrightness: brightness.clamp(0, 1), 
@@ -312,10 +320,8 @@ Future<void> playSecondTone({SoundContext? context}) async {
   Uint8List pcmBytes;
 
   if (_cachedSecondTone != null) {
-    print('playsecondtone → using pre-generated PCM');
     pcmBytes = _cachedSecondTone!;
   } else {
-    print('playsecondtone → generating on the fly');
     final profile = _buildProfile(context, false);
     pcmBytes = await Future(() => _generateTone(profile, false));
   }
@@ -324,7 +330,6 @@ Future<void> playSecondTone({SoundContext? context}) async {
     final elapsed = DateTime.now().difference(_firstToneStartTime!);
     final delayNeeded = _minDelayBetweenTonesMs - elapsed.inMilliseconds;
     if (delayNeeded > 0) {
-      print('waiting $delayNeeded ms');
       await Future.delayed(Duration(milliseconds: delayNeeded));
     }
   }

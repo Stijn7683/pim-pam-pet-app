@@ -35,18 +35,28 @@ class _PlayscreenState extends State<Playscreen2> {
   DateTime? _lastPressedTime;
   final _cooldownDuration = Duration(milliseconds: 550);
   final List<String> _scoreGivenToThisRound = [];
+  List<String> _scoreGivenToPreviousRound = [];
 
   void _newRound() {
+    print(_scoreGivenToThisRound);
     if (_scoreGivenToThisRound.isEmpty) {
       skipsInaRow++;
+      for (final player in players) {
+        player.streakValue *= 0.1;
+      }
     } else {
       // reset all the streak values to 0 for players that didn't get a point this round
       for (final player in players) {
         if (!_scoreGivenToThisRound.contains(player.name)) {
-          player.streakValue = 0;
+          if (_scoreGivenToPreviousRound.contains(player.name)) {
+            player.streakValue *= 0.1;
+          } else {
+            player.streakValue = 0;
+          }
         }
       }
       skipsInaRow = 0;
+      _scoreGivenToPreviousRound = List.from(_scoreGivenToThisRound);
       _scoreGivenToThisRound.clear();
     }
 
