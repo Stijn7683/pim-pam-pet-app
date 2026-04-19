@@ -38,7 +38,6 @@ class _PlayscreenState extends State<Playscreen2> {
   List<String> _scoreGivenToPreviousRound = [];
 
   void _newRound() {
-    print(_scoreGivenToThisRound);
     if (_scoreGivenToThisRound.isEmpty) {
       skipsInaRow++;
       for (final player in players) {

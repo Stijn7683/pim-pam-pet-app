@@ -107,7 +107,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
 
   if (ctx != null) {
     // --- streakValue change influence ---
-    print('streakValue: ${ctx.streakValue}');
+    //print('streakValue: ${ctx.streakValue}');
     double streakImpact = math.pow(math.min(ctx.streakValue -1, 7), 1.6).toDouble(); 
     fade += streakImpact * .1;
     sweep += (isFirstTone ? -0.4 : .5) * streakImpact;
@@ -185,7 +185,7 @@ _SoundProfile _buildProfile(SoundContext? ctx, bool isFirstTone) {
 
   return _SoundProfile(
     baseFreq: freq,
-    freqStdDev: 0, //math.max(0, stdDev),
+    freqStdDev: math.max(0, stdDev),
     freqSweep: sweep,
     fadeRate: fade,
     harmonicBrightness: brightness.clamp(0, 1), 

@@ -10,7 +10,6 @@ import 'dart:math';
 
 import 'package:pimpampet/randomise.dart';
 import 'package:pimpampet/settings_provider.dart';
-import 'package:pimpampet/tests/interactive_sound_test_page.dart';
 import 'package:provider/provider.dart';
 //import 'package:pimpampet/tests/interactive_sound_test_page.dart';
 //import 'package:pimpampet/soundtest.dart';
